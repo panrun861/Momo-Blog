@@ -46,6 +46,7 @@ async function submit() {
   try {
     await formRef.value?.validate()
     let params: LoginParams | LoginMobileParams
+<<<<<<< HEAD
     if (loginModel.type === 'account') {
       params = { username: loginModel.username, password: loginModel.password } as LoginParams
     } else {
@@ -90,6 +91,50 @@ async function submit() {
     if (e instanceof AxiosError) errorAlert.value = true
   } finally {
     // 无论成功失败，都重置loading
+=======
+
+    if (loginModel.type === 'account') {
+      params = {
+        username: loginModel.username,
+        password: loginModel.password,
+      } as unknown as LoginParams
+    }
+    else {
+      params = {
+        mobile: loginModel.mobile,
+        code: loginModel.code,
+        type: 'mobile',
+      } as unknown as LoginMobileParams
+    }
+    const { data } = await loginApi(params)
+    token.value = JSON.stringify({ token: data?.token, expires: data?.expire })
+    notification.success({
+      message: '登录成功',
+      description: '欢迎回来！',
+      duration: 3,
+    })
+    // 获取当前是否存在重定向的链接，如果存在就走重定向的地址
+    const redirect = getQueryParam('redirect', '/')
+    // 获取用户信息
+    await userStore.getUserInfo()
+    // 获取路由菜单的信息
+    const currentRoute = await userStore.generateDynamicRoutes()
+    router.addRoute(currentRoute)
+    await router.push({
+      path: redirect,
+      replace: true,
+    })
+  }
+  catch (e) {
+    notification.error({
+      message: `登录失败${e}`,
+      description: e instanceof Error ? e.message : '请联系管理员',
+      duration: 3,
+    })
+    if (e instanceof AxiosError)
+      errorAlert.value = true
+
+>>>>>>> 8440e732551d5fb16c5b66f22142950186136265
     submitLoading.value = false
   }
 }

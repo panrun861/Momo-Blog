@@ -48,6 +48,7 @@ public class FileUploadUtils {
      * @return 上传后的文件地址
      * @throws Exception 异常
      */
+<<<<<<< HEAD
 //    public String upload(UploadEnum uploadEnum, MultipartFile file) throws Exception {
 //        isCheck(uploadEnum, file);
 //        if (isFormatFile(file.getOriginalFilename(), uploadEnum.getFormat())) {
@@ -124,6 +125,26 @@ public class FileUploadUtils {
     }
 
 
+=======
+    public String upload(UploadEnum uploadEnum, MultipartFile file) throws Exception {
+        isCheck(uploadEnum, file);
+        if (isFormatFile(file.getOriginalFilename(), uploadEnum.getFormat())) {
+            InputStream stream = file.getInputStream();
+            String name = UUID.randomUUID().toString();
+            PutObjectArgs args = PutObjectArgs.builder()
+                    .bucket(bucketName)
+                    .headers(Map.of(Const.CONTENT_TYPE, Objects.requireNonNull(file.getContentType())))
+                    .object(uploadEnum.getDir() + name + "." + getFileExtension(file.getOriginalFilename()))
+                    .stream(stream, file.getSize(), -1)
+                    .build();
+            client.putObject(args);
+            return endpoint + "/" + bucketName + "/" + uploadEnum.getDir() + name + "." + getFileExtension(file.getOriginalFilename());
+        }
+        log.error("--------------------上传文件格式不正确--------------------");
+        throw new FileUploadException("上传文件类型错误");
+    }
+
+>>>>>>> 8440e732551d5fb16c5b66f22142950186136265
     /**
      * 上传文件 -- 指定文件名
      *
