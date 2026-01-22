@@ -12,14 +12,17 @@ import autoprefixer from 'autoprefixer'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }: ConfigEnv) => {
+    
     // 1. 显式加载环境变量
     const env = loadEnv(mode, process.cwd());
     
-    // 2. 打印日志进行调试 (启动时请看控制台输出！)
+    // 2. 打印日志进行调试（修改：统一变量名，匹配.env文件）
     console.log('---------------------------------');
     console.log('当前运行模式:', mode);
-    console.log('后端 API 地址 (VITE_SERVE):', env.VITE_SERVE);
-    console.log('音乐 API 地址 (VITE_MUSIC_SERVE):', env.VITE_MUSIC_SERVE);
+    // 修改1：使用.env里的VITE_APP_BASE_URL，而非VITE_SERVE
+    console.log('后端 API 地址 (VITE_APP_BASE_URL):', env.VITE_APP_BASE_URL);
+    // 修改2：给音乐API也加默认变量名（若.env里是VITE_APP_MUSIC_URL，需对应）
+    console.log('音乐 API 地址 (VITE_APP_MUSIC_URL):', env.VITE_APP_MUSIC_URL);
     console.log('---------------------------------');
 
     return {
@@ -61,6 +64,8 @@ export default defineConfig(({ mode }: ConfigEnv) => {
                 scss: {
                     javascriptEnabled: true,
                     additionalData: '@import "./src/styles/variable.scss";',
+                    api: 'modern-compiler', 
+                    silenceDeprecations: ['legacy-js-api', 'import', 'mixed-decls', 'color-functions'],
                 },
             },
             postcss: {
@@ -78,11 +83,18 @@ export default defineConfig(({ mode }: ConfigEnv) => {
                     assetFileNames: '[ext]/[name]-[hash].[ext]',
                 },
                 manualChunks(id) {
-                    if (id.includes('node_modules')) {
-                        // 增加简单的错误捕获防止 split 失败（虽然主要是为了修复 proxy）
+                    // 修改3：强化manualChunks的空值保护，避免split报错
+                    if (id && id.includes('node_modules')) {
                         try {
-                            return id.toString().split('node_modules/')[1].split('/')[0].toString();
+                            const parts = id.toString().split('node_modules/');
+                            // 先判断parts[1]是否存在，再split
+                            if (parts.length > 1 && parts[1]) {
+                                const pkgName = parts[1].split('/')[0];
+                                return pkgName ? pkgName.toString() : 'vendor';
+                            }
+                            return 'vendor';
                         } catch (e) {
+                            console.warn('manualChunks 处理失败:', e);
                             return 'vendor';
                         }
                     }
@@ -94,16 +106,17 @@ export default defineConfig(({ mode }: ConfigEnv) => {
             host: '0.0.0.0',
             proxy: {
                 '/api': {
-                    // 核心修复：如果 env.VITE_SERVE 是空的，回退到 127.0.0.1，防止 split 报错
-                    target: env.VITE_SERVE || 'http://127.0.0.1:8088',
+                    // 修改4：使用正确的环境变量名 + 兜底，确保target非空
+                    target: env.VITE_APP_BASE_URL || 'http://127.0.0.1:8088',
                     changeOrigin: true,
-                    rewrite: (path) => path.replace(/^\/api/, '')
+                    // 修改5：rewrite加空值保护
+                    rewrite: (path) => (path ? path.replace(/^\/api/, '') : '')
                 },
                 '/wapi': {
-                    // 核心修复：如果 env.VITE_MUSIC_SERVE 是空的，给一个占位地址
-                    target: env.VITE_MUSIC_SERVE || 'http://127.0.0.1:3000',
+                    // 修改6：统一音乐API的变量名 + 兜底 + rewrite保护
+                    target: env.VITE_APP_MUSIC_URL || 'http://127.0.0.1:13000',
                     changeOrigin: true,
-                    rewrite: (path) => path.replace(/^\/wapi/, '')
+                    rewrite: (path) => (path ? path.replace(/^\/wapi/, '') : '')
                 }
             }
         }
