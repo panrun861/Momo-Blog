@@ -1,6 +1,5 @@
 server:
   port: 8088
-<<<<<<< HEAD
 
 spring:
   profiles:
@@ -33,29 +32,6 @@ mybatis-plus:
       logic-not-delete-value: 0
       id-type: auto
 
-# 接口文档
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /v3/api-docs
-
-# 业务通用配置 (保持结构)
-mail:
-  article-email-notice: true
-  message-new-notice: true
-  message-reply-notice: true
-  apply-notice: true
-  pass-notice: true
-
-http_pool:
-  max_total: 200
-  default_max_per_route: 100
-  connect_timeout: 5000
-=======
-spring:
-  profiles:
-    active: "@profiles.active@"
 #  security:
 #    jwt:
 #      key: jwt-key
@@ -225,4 +201,3 @@ spring:
 #  accessKey:
 #  secretKey:
 #  bucketName:
->>>>>>> 8440e732551d5fb16c5b66f22142950186136265

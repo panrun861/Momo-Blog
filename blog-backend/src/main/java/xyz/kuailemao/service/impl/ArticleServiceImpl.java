@@ -241,7 +241,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     }
 
-<<<<<<< HEAD
 
     /**
      * 文章封面上传接口 - 优化后（返回具体失败原因）
@@ -293,24 +292,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             String errorMsg = "上传失败：服务器内部异常（" + e.getClass().getSimpleName() + "）：" + e.getMessage();
             log.error(errorMsg + "，文件名：{}", originalFilename, e);
             return ResponseResult.failure(errorMsg);
-=======
-    @Override
-    public ResponseResult<String> uploadArticleCover(MultipartFile articleCover) {
-        try {
-            String articleCoverUrl = null;
-            try {
-                articleCoverUrl = fileUploadUtils.upload(UploadEnum.ARTICLE_COVER, articleCover);
-            } catch (FileUploadException e) {
-                return ResponseResult.failure(e.getMessage());
-            }
-            if (StringUtils.isNotNull(articleCoverUrl))
-                return ResponseResult.success(articleCoverUrl);
-            else
-                return ResponseResult.failure("上传格式错误");
-        } catch (Exception e) {
-            log.error("文章封面上传失败", e);
-            return ResponseResult.failure();
->>>>>>> 8440e732551d5fb16c5b66f22142950186136265
         }
     }
 
