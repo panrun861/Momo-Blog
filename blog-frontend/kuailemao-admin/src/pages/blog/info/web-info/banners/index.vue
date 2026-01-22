@@ -77,7 +77,7 @@ async function beforeUpload(file: UploadProps['fileList'][number]) {
   }
   const compressedFile = await compressImage(file)
 
-  const isLt03MB = compressedFile.size / 1024 / 1024 < 0.3
+  const isLt03MB = compressedFile.size / 1024 / 1024 < 5
   if (!isLt03MB) {
     message.error('图片压缩后大小大于 0.3MB')
     return
