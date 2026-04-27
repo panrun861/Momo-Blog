@@ -80,7 +80,7 @@
 
 **其他链接：**（第三方个人本项目部署链接，提供预览作用，其内容与本项目作者无关，感谢本同学提供）
 
-前台：http://117.72.182.67:8080/ 
+前台：http://117.72.182.67:8080/
 
 后台：http://117.72.182.67:8081
 
@@ -108,71 +108,100 @@
 ## 项目部署
 **部署文档地址：** https://kuailemao.xyz/article/48 或项目**Wiki**
 
-## 项目特点
-
-* 前端参考了众多优秀博客大佬设计，页面美观，响应式布局
-* 后台管理基于 Antdv Pro 后台通用框架二次开发
-* 前后端分离，Docker Compose 一键部署
-* 采用 RABC 权限模型，使用 SpringSecurity 进行权限管理
-* 支持动态权限修改、动态菜单和路由
-* 文章、分类、标签、时间轴、树洞、留言板、聊天、友链等模块
-* 站长介绍、公告、电子时钟、随机文章、每日鸡汤、网站资讯
-* 支持代码高亮、图片预览、黑夜模式、点赞、收藏、评论等功能
-* 评论支持在线预览、Markdown、表情包
-* 发送友链申请、通过等自动发送邮件提醒
-* 接入第三方 gitee、github登录，减少注册成本
-* 文章编辑使用 Markdown 编辑器
-* 实现日志管理（操作、登录），服务监控、用户、菜单、角色、权限管理
-* 使用 自己搭建 minio 进行图片存储（避免了使用第三方对象存储被刷流量问题）
-* 使用 拦截器 + Redis 对接口进行了限流处理（每分钟）,后端使用 JSR 303 对参数校验，使用 Spring Aop + RabbitMQ 对后台操作日志处理
-* 采用 Restful 风格的 API，注释完善，后端代码使用了大量 stream 流编程方式，代码非常美观
-* ……
-
 ## 技术介绍
 
-**前台前端（博客）：** Vue3 + Pinia +  Vue Router + TypeScript + Axios + Element Plus + Echarts……
+**前台前端（博客）：** Vue3 + Pinia + Vue Router + TypeScript + Axios + Element Plus + Echarts……
 
-**后台启动（管理）：** Vue3 + Pinia +  Vue Router + TypeScript + Axios + Antdv Pro + Ant Design Vue……
+**后台启动（管理）：** Vue3 + Pinia + Vue Router + TypeScript + Axios + Antdv Pro + Ant Design Vue……
 
-**后端：** JDK17 + SpringBoot3 + SpringSecurity + Mysql + Redis + Quartz  + RabbitMQ + Minio + Mybatis-Plus + Nginx + Docker……
+**后端：** JDK17 + SpringBoot3 + SpringSecurity + Mysql + Redis + Quartz + RabbitMQ + Minio + Mybatis-Plus + Nginx + Docker……
 
-**其他：** Gitee、Github 第三方登录
+## 项目特点
 
-## 运行环境
+* 前后端分离，Docker Compose 一键部署
+* RABC 权限模型 + SpringSecurity 动态权限管理
+* 文章、相册、音乐、树洞、留言板、友链等完整博客功能
+* 评论 Markdown + 表情包、代码高亮、图片预览
+* 第三方登录（Gitee/Github）、邮件自动提醒
+* 自建 MinIO 图片存储、Redis 接口限流、操作日志审计
+* **AI 智能增强（规划中）**
 
-### 推荐
-
-> 最低 2 核 4 G
-
-**我的：** 腾讯云 2 核 4 G  （带宽 6Mbps）
-
-**系统：** **CentOS**
-
-**前端\后端：** Docker
-
-## 后续计划（有空）
+## 后续计划
 
 > 白天上班，只能抽空优化项目，还望理解
 
+### AI 智能增强计划（核心）
+
+#### 1. RAG 向量库集成
+将博客文章内容向量化和存储，支持基于语义的智能搜索和问答。
+
+**技术方案：**
+- 向量数据库：Milvus / Qdrant / Chroma
+- Embedding 模型：text-embedding-ada-002 / M3E / BGE
+- LLM 接口：OpenAI API / 硅基流动 / 本地模型
+
+**实现流程：**
+```
+文章发布 → 文档解析 → 文本切分 → Embedding → 向量存储
+                                    ↓
+用户提问 → Query Embedding → 向量检索 → Context 组装 → LLM 生成 → 返回
+```
+
+**涉及改动：**
+- 后端：新增 VectorService、RagService，向量数据库集成
+- 前端：新增 "AI 问答" 页面，支持语义搜索
+
+#### 2. AI 辅助写作功能
+在线使用 AI 进行文档编写，降低创作门槛。
+
+**Phase 1 - AI 模板生成**
+- 用户选择文章类型（教程、评测、科普等）
+- AI 生成大纲或初稿，用户在此基础上修改
+
+**Phase 2 - 实时辅助写作**
+- AI 自动补全、续写、润色、翻译
+- 流式输出（SSE/WebSocket），实时渲染
+
+**涉及改动：**
+- 后端：流式 LLM 调用（WebFlux / SseEmitter）
+- 前端：Markdown 编辑器集成 AI 能力
+
+#### 3. IDE 远程连接支持
+支持 Trae/VSCode 连接服务器操作文件。
+
+**方案 A - WebDAV/SFTP API**
+- 后端提供文件操作接口（list、read、write、delete）
+- IDE 通过协议连接远程服务器
+
+**方案 B - Monaco Editor 在线编辑**
+- 集成 Monaco Editor（VSCode 编辑器内核）
+- 提供在线代码查看和编辑体验
+
+**涉及改动：**
+- 后端：文件管理 API 开发
+- 前端：Monaco Editor 集成
+
+### 待优化功能
+
+- [ ] 实现后台导入导出
+- [ ] 后台图片资源管理模块
+- [ ] 后台首页数据大屏
+- [ ] 博客 app 版本
+- [ ] 博客小程序版本
+
+### 已完成功能
+
 - [x] 持续优化前台响应式
 - [x] 新增用户设置、支持修改邮箱、头像、昵称...
-- [x] 重构移动端首页
-- [x] 重构移动端文章页面
-- [x] 重构各种功能邮箱提醒(v1.4.1)
-- [ ] 实现后台导入导出
+- [x] 重构移动端首页/文章页面
+- [x] 重构各种功能邮箱提醒
 - [x] 实现前台搜索
 - [x] 内置图片上传压缩
-- [x] 相册管理(v1.6.0)
-- [x] 前台添加更加有趣的效果
+- [x] 相册管理
 - [x] 前台音乐播放器
-- [ ] 后台图片资源管理模块
-- [x] 找出并修复一些隐藏的bug(持续完善)
-- [x] 前端响应速度优化到网络正常的情况下5秒以内
 - [x] 实现黑名单管理机制
-- [ ] 后台首页数据大屏
-- [ ] 后台图片资源管理
-- [ ] 博客app版本
-- [ ] 博客小程序版本
+- [x] 前端响应速度优化到 5 秒以内
+- [x] 找出并修复隐藏的 bug
 
 ## 项目总结
 
@@ -181,17 +210,11 @@
 ### 鸣谢项目：
 
 * [mrzym-blog](https://gitee.com/mrzym/stable-version-of-blog)
-
-* [掐指yi算’逢考必过-Blog](https://gitee.com/wu_shengdong/blog)
-
+* [掐指yi算'逢考必过-Blog](https://gitee.com/wu_shengdong/blog)
 * [hexo-theme-butterfly](https://github.com/jerryc127/hexo-theme-butterfly)
-
 * [Antdv Pro](https://docs.antdv-pro.com/)
-
 * [md-editor-v3](https://imzbf.github.io/md-editor-v3/zh-CN/index)
-
 * [vue-danmaku](https://github.com/hellodigua/vue-danmaku)
-
 * ……
 
 #### Heo表情包开源地址
@@ -210,4 +233,3 @@
 **二维码：**
 
 ![Ruyu开源博客交流群群聊二维码](img/Ruyu%E5%BC%80%E6%BA%90%E5%8D%9A%E5%AE%A2%E4%BA%A4%E6%B5%81%E7%BE%A4%E7%BE%A4%E8%81%8A%E4%BA%8C%E7%BB%B4%E7%A0%81.png)
-
