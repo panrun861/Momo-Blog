@@ -241,22 +241,57 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     }
 
+
+    /**
+     * 文章封面上传接口 - 优化后（返回具体失败原因）
+     */
+    // 注意：这是Controller/Service中的方法，需保证依赖的类（ResponseResult、fileUploadUtils、UploadEnum、FileUploadException）已正确引入
     @Override
     public ResponseResult<String> uploadArticleCover(MultipartFile articleCover) {
+        // 1. 前置校验：文件为空
+        if (articleCover == null || articleCover.isEmpty()) {
+            String errorMsg = "上传失败：封面文件不能为空";
+            log.warn(errorMsg);
+            return ResponseResult.failure(errorMsg);
+        }
+
+        // 2. 前置校验：文件名/后缀（提前拦截明显的格式问题）
+        String originalFilename = articleCover.getOriginalFilename();
+        if (!StringUtils.hasText(originalFilename)) {
+            String errorMsg = "上传失败：文件名称为空，无法识别文件格式";
+            log.warn(errorMsg);
+            return ResponseResult.failure(errorMsg);
+        }
+
         try {
-            String articleCoverUrl = null;
-            try {
-                articleCoverUrl = fileUploadUtils.upload(UploadEnum.ARTICLE_COVER, articleCover);
-            } catch (FileUploadException e) {
-                return ResponseResult.failure(e.getMessage());
-            }
-            if (StringUtils.isNotNull(articleCoverUrl))
+            // 3. 调用文件上传工具类（核心上传逻辑）
+            String articleCoverUrl = fileUploadUtils.upload(UploadEnum.ARTICLE_COVER, articleCover);
+
+            // 4. 校验上传结果
+            if (StringUtils.hasText(articleCoverUrl)) {
                 return ResponseResult.success(articleCoverUrl);
-            else
-                return ResponseResult.failure("上传格式错误");
+            } else {
+                // 工具类返回空，说明上传逻辑内部判定失败（如格式/大小不匹配）
+                String errorMsg = "上传失败：文件格式或大小不符合要求（仅支持jpg/png/webp，大小不超过0.3MB）";
+                log.warn(errorMsg + "，文件名：{}", originalFilename);
+                return ResponseResult.failure(errorMsg);
+            }
+
+        } catch (FileUploadException e) {
+            // 5. 捕获工具类自定义异常（业务异常）
+            String errorMsg = "上传失败：" + e.getMessage();
+            log.warn(errorMsg + "，文件名：{}", originalFilename, e); // 业务异常用warn级别
+            return ResponseResult.failure(errorMsg);
+        } catch (NullPointerException e) {
+            // 8. 精准捕获空指针异常
+            String errorMsg = "上传失败：系统内部参数异常（FileUploadUtils未注入/枚举配置为空）";
+            log.error(errorMsg + "，文件名：{}", originalFilename, e);
+            return ResponseResult.failure(errorMsg);
         } catch (Exception e) {
-            log.error("文章封面上传失败", e);
-            return ResponseResult.failure();
+            // 9. 兜底捕获其他异常（避免漏网）
+            String errorMsg = "上传失败：服务器内部异常（" + e.getClass().getSimpleName() + "）：" + e.getMessage();
+            log.error(errorMsg + "，文件名：{}", originalFilename, e);
+            return ResponseResult.failure(errorMsg);
         }
     }
 

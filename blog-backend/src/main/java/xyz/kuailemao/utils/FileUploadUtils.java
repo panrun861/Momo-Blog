@@ -48,23 +48,65 @@ public class FileUploadUtils {
      * @return 上传后的文件地址
      * @throws Exception 异常
      */
-    public String upload(UploadEnum uploadEnum, MultipartFile file) throws Exception {
-        isCheck(uploadEnum, file);
-        if (isFormatFile(file.getOriginalFilename(), uploadEnum.getFormat())) {
-            InputStream stream = file.getInputStream();
-            String name = UUID.randomUUID().toString();
-            PutObjectArgs args = PutObjectArgs.builder()
-                    .bucket(bucketName)
-                    .headers(Map.of(Const.CONTENT_TYPE, Objects.requireNonNull(file.getContentType())))
-                    .object(uploadEnum.getDir() + name + "." + getFileExtension(file.getOriginalFilename()))
-                    .stream(stream, file.getSize(), -1)
-                    .build();
-            client.putObject(args);
-            return endpoint + "/" + bucketName + "/" + uploadEnum.getDir() + name + "." + getFileExtension(file.getOriginalFilename());
+
+    public String upload(UploadEnum uploadEnum, MultipartFile file) throws FileUploadException {
+        // 1. 前置校验：文件为空
+        if (file.isEmpty()) {
+            throw new FileUploadException("上传文件不能为空");
         }
-        log.error("--------------------上传文件格式不正确--------------------");
-        throw new FileUploadException("上传文件类型错误");
+
+        // 2. 校验文件格式
+        String originalFilename = file.getOriginalFilename();
+        String suffix = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+        if (!uploadEnum.getFormat().contains(suffix)) {
+            throw new FileUploadException("不支持的文件格式，仅支持：" + uploadEnum.getFormat());
+        }
+
+        // 3. 校验文件大小（转换为字节：MB * 1024 * 1024）
+        long maxSize = (long) (uploadEnum.getLimitSize() * 1024 * 1024);
+        if (file.getSize() > maxSize) {
+            throw new FileUploadException("文件大小超过限制，最大支持" + uploadEnum.getLimitSize() + "MB");
+        }
+
+        // 4. 校验并创建MinIO主桶（关键！）
+        try {
+            boolean bucketExists = client.bucketExists(BucketExistsArgs.builder()
+                    .bucket(bucketName)
+                    .build());
+            if (!bucketExists) {
+                client.makeBucket(MakeBucketArgs.builder()
+                        .bucket(bucketName)
+                        .region("cn-east-1") // 替换为你的MinIO地区
+                        .build());
+                log.info("MinIO主桶【{}】不存在，已自动创建", bucketName);
+            }
+        } catch (Exception e) {
+            throw new FileUploadException("校验/创建MinIO主桶失败：" + e.getMessage());
+        }
+
+        // 5. 生成唯一文件名（避免重复）
+        String fileName = UUID.randomUUID().toString() + "." + suffix;
+        // 6. 拼接桶内完整路径：子目录 + 文件名
+        String objectName = uploadEnum.getDir() + fileName;
+
+        // 7. 上传文件到MinIO（主桶 + 子目录路径）
+        try (InputStream inputStream = file.getInputStream()) {
+            client.putObject(PutObjectArgs.builder()
+                    .bucket(bucketName) // 主桶名（配置文件中的）
+                    .object(objectName)     // 桶内子目录+文件名
+                    .stream(inputStream, file.getSize(), -1)
+                    .contentType(file.getContentType())
+                    .build());
+
+            // 8. 拼接文件访问URL（MinIO地址 + 主桶 + 子目录 + 文件名）
+            String fileUrl = endpoint + "/" + bucketName + "/" + objectName;
+            return fileUrl;
+        } catch (Exception e) {
+            log.error("上传文件到MinIO失败", e);
+            throw new FileUploadException("文件上传失败：" + e.getMessage());
+        }
     }
+
 
     /**
      * 上传文件 -- 指定文件名

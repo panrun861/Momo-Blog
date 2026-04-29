@@ -46,48 +46,50 @@ async function submit() {
   try {
     await formRef.value?.validate()
     let params: LoginParams | LoginMobileParams
-
     if (loginModel.type === 'account') {
-      params = {
-        username: loginModel.username,
-        password: loginModel.password,
-      } as unknown as LoginParams
+      params = { username: loginModel.username, password: loginModel.password } as LoginParams
+    } else {
+      params = { mobile: loginModel.mobile, code: loginModel.code, type: 'mobile' } as LoginMobileParams
     }
-    else {
-      params = {
-        mobile: loginModel.mobile,
-        code: loginModel.code,
-        type: 'mobile',
-      } as unknown as LoginMobileParams
-    }
-    const { data } = await loginApi(params)
-    token.value = JSON.stringify({ token: data?.token, expires: data?.expire })
-    notification.success({
-      message: '登录成功',
-      description: '欢迎回来！',
-      duration: 3,
-    })
-    // 获取当前是否存在重定向的链接，如果存在就走重定向的地址
-    const redirect = getQueryParam('redirect', '/')
-    // 获取用户信息
-    await userStore.getUserInfo()
-    // 获取路由菜单的信息
-    const currentRoute = await userStore.generateDynamicRoutes()
-    router.addRoute(currentRoute)
-    await router.push({
-      path: redirect,
-      replace: true,
-    })
-  }
-  catch (e) {
-    notification.error({
-      message: `登录失败${e}`,
-      description: e instanceof Error ? e.message : '请联系管理员',
-      duration: 3,
-    })
-    if (e instanceof AxiosError)
-      errorAlert.value = true
 
+    // -------- 1. 单独捕获登录接口错误 --------
+    const { data } = await loginApi(params)
+    // 校验业务状态（根据后端实际字段调整，比如 data.code === 200）
+    if (!data || !data.token) {
+      throw new Error('登录接口返回无效数据，请检查账号密码')
+    }
+    // 存储有效token
+    token.value = JSON.stringify({ token: data.token, expires: data.expire })
+    notification.success({ message: '登录成功', description: '欢迎回来！', duration: 3 })
+
+    // -------- 2. 单独处理用户信息和路由，捕获后续错误 --------
+    try {
+      const redirect = getQueryParam('redirect', '/')
+      // 获取用户信息 + 校验结果
+      await userStore.getUserInfo()
+      if (!userStore.userInfo?.username) {
+        throw new Error('用户信息获取失败')
+      }
+      // 生成动态路由 + 校验结果
+      const currentRoute = await userStore.generateDynamicRoutes()
+      if (!currentRoute || !currentRoute.path) {
+        throw new Error('动态路由生成失败')
+      }
+      router.addRoute(currentRoute)
+      // 跳转前确认路由存在
+      await router.push({ path: redirect, replace: true })
+    } catch (e) {
+      // 后续步骤错误，不影响“登录成功”的结论
+      const errMsg = e instanceof Error ? e.message : '用户信息/路由加载失败'
+      notification.warning({ message: '登录成功', description: errMsg, duration: 5 })
+    }
+  } catch (e) {
+    // 真正的登录失败（接口/账号密码错误）
+    const errMsg = e instanceof Error ? e.message : '账号或密码错误'
+    notification.error({ message: '登录失败', description: errMsg, duration: 3 })
+    if (e instanceof AxiosError) errorAlert.value = true
+  } finally {
+    // 无论成功失败，都重置loading
     submitLoading.value = false
   }
 }

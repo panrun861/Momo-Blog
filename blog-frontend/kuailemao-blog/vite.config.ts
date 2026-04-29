@@ -1,35 +1,43 @@
-import {ConfigEnv, defineConfig, loadEnv} from 'vite'
+import { ConfigEnv, defineConfig, loadEnv } from 'vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import viteCompression from 'vite-plugin-compression';
 import Components from 'unplugin-vue-components/vite'
-import {ElementPlusResolver} from 'unplugin-vue-components/resolvers'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { visualizer } from 'rollup-plugin-visualizer'
 import vue from '@vitejs/plugin-vue'
-// 引入svg需要用到插件
-import {createSvgIconsPlugin} from 'vite-plugin-svg-icons'
+import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import path from 'path'
 import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }: ConfigEnv) => {
+    
+    // 1. 显式加载环境变量
+    const env = loadEnv(mode, process.cwd());
+    
+    // 2. 打印日志进行调试（修改：统一变量名，匹配.env文件）
+    console.log('---------------------------------');
+    console.log('当前运行模式:', mode);
+    // 修改1：使用.env里的VITE_APP_BASE_URL，而非VITE_SERVE
+    console.log('后端 API 地址 (VITE_APP_BASE_URL):', env.VITE_APP_BASE_URL);
+    // 修改2：给音乐API也加默认变量名（若.env里是VITE_APP_MUSIC_URL，需对应）
+    console.log('音乐 API 地址 (VITE_APP_MUSIC_URL):', env.VITE_APP_MUSIC_URL);
+    console.log('---------------------------------');
+
     return {
         plugins: [
             viteCompression({
-                verbose: true, // 是否在控制台中输出压缩结果
+                verbose: true,
                 disable: false,
-                threshold: 1024, // 如果体积大于阈值，将被压缩，单位为b，体积过小时请不要压缩，以免适得其反
-                algorithm: 'gzip', // 压缩算法，可选['gzip'，' brotliccompress '，'deflate '，'deflateRaw']
+                threshold: 1024,
+                algorithm: 'gzip',
                 ext: '.gz',
-                // 源文件压缩后是否删除(亲测配置为true后浏览器会出现错误，除非nginx配置index  index.html index.htm;)
-                // 具体出现问题参考：https://blog.csdn.net/zzk_01/article/details/125857217
                 deleteOriginFile: false
             }),
             vue(),
             createSvgIconsPlugin({
-                // 指定需要缓存的图标文件夹
                 iconDirs: [path.resolve(process.cwd(), 'src/assets/icons')],
-                // 指定symbolId格式
                 symbolId: 'icon-[dir]-[name]',
             }),
             AutoImport({
@@ -41,15 +49,14 @@ export default defineConfig(({ mode }: ConfigEnv) => {
                 resolvers: [ElementPlusResolver()],
                 dts: "src/types/components.d.ts",
             }),
-            // 打包体积分析
             visualizer({
                 open: true,
-                filename: 'visualizer.html' //分析图生成的文件名
+                filename: 'visualizer.html'
             })
         ],
         resolve: {
             alias: {
-                "@": path.resolve("./src") // 相对路径别名配置，使用 @ 代替 src
+                "@": path.resolve("./src")
             }
         },
         css: {
@@ -57,6 +64,8 @@ export default defineConfig(({ mode }: ConfigEnv) => {
                 scss: {
                     javascriptEnabled: true,
                     additionalData: '@import "./src/styles/variable.scss";',
+                    api: 'modern-compiler', 
+                    silenceDeprecations: ['legacy-js-api', 'import', 'mixed-decls', 'color-functions'],
                 },
             },
             postcss: {
@@ -68,16 +77,26 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         },
         build: {
             rollupOptions: {
-                // 配置打包文件分类输出
                 output: {
-                    chunkFileNames: 'js/[name]-[hash].js', // 引入文件名的名称
-                    entryFileNames: 'js/[name]-[hash].js', // 包的入口文件名称
-                    assetFileNames: '[ext]/[name]-[hash].[ext]', // 资源文件像 字体，图片等
+                    chunkFileNames: 'js/[name]-[hash].js',
+                    entryFileNames: 'js/[name]-[hash].js',
+                    assetFileNames: '[ext]/[name]-[hash].[ext]',
                 },
-                // 最小化拆分包， 将需要分离的包单独的打包出来
                 manualChunks(id) {
-                    if (id.includes('node_modules')) {
-                        return id.toString().split('node_modules/')[1].split('/')[0].toString();
+                    // 修改3：强化manualChunks的空值保护，避免split报错
+                    if (id && id.includes('node_modules')) {
+                        try {
+                            const parts = id.toString().split('node_modules/');
+                            // 先判断parts[1]是否存在，再split
+                            if (parts.length > 1 && parts[1]) {
+                                const pkgName = parts[1].split('/')[0];
+                                return pkgName ? pkgName.toString() : 'vendor';
+                            }
+                            return 'vendor';
+                        } catch (e) {
+                            console.warn('manualChunks 处理失败:', e);
+                            return 'vendor';
+                        }
                     }
                 }
             }
@@ -87,14 +106,17 @@ export default defineConfig(({ mode }: ConfigEnv) => {
             host: '0.0.0.0',
             proxy: {
                 '/api': {
-                    target: `${loadEnv(mode, process.cwd()).VITE_SERVE}`,
+                    // 修改4：使用正确的环境变量名 + 兜底，确保target非空
+                    target: env.VITE_APP_BASE_URL || 'http://127.0.0.1:8088',
                     changeOrigin: true,
-                    rewrite: (path) => path.replace(/^\/api/, '')
+                    // 修改5：rewrite加空值保护
+                    rewrite: (path) => (path ? path.replace(/^\/api/, '') : '')
                 },
                 '/wapi': {
-                    target: `${loadEnv(mode, process.cwd()).VITE_MUSIC_SERVE}`,
+                    // 修改6：统一音乐API的变量名 + 兜底 + rewrite保护
+                    target: env.VITE_APP_MUSIC_URL || 'http://127.0.0.1:13000',
                     changeOrigin: true,
-                    rewrite: (path) => path.replace(/^\/wapi/, '')
+                    rewrite: (path) => (path ? path.replace(/^\/wapi/, '') : '')
                 }
             }
         }

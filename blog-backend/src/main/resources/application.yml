@@ -1,8 +1,37 @@
 server:
   port: 8088
+
 spring:
   profiles:
-    active: "@profiles.active@"
+    active: dev
+  security:
+    jwt:
+      key: jwt-key
+      # jwt 的有效时间（天）
+      expire: 7
+  main:
+    allow-circular-references: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      id-type: auto
+
 #  security:
 #    jwt:
 #      key: jwt-key

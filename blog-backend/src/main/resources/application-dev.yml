@@ -1,0 +1,182 @@
+# 服务器基础配置
+server:
+  port: 8088  # 统一端口配置，删除重复项
+
+# Spring 核心配置
+spring:
+  
+  # 安全相关配置
+  security:
+    jwt:
+      key: "your-custom-jwt-secret- key-at-least-32-chars"  # 建议至少32位随机字符串
+      expire: 7  # JWT有效期（天）
+  
+  # 数据库配置（已补全本地Docker映射地址）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:13306/blog?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Hong_Kong
+    username: root
+    password: 123456
+  
+  # Redis配置（已补全本地Docker映射地址）
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 16379  # Docker映射端口
+      password: ""  # 无密码则留空
+      timeout: 10000  # 连接超时（毫秒）
+      database: 1  # 数据库索引
+  
+  # 邮件配置（补全缺失项，保留占位符）
+  mail:
+    host: smtp.qq.com
+    port: 587  # 补全QQ邮箱SMTP端口
+    username: <你的QQ邮箱账号>  # 例如：123456@qq.com
+    password: <你的QQ邮箱授权码>  # 不是登录密码，需在邮箱设置中获取
+    default-encoding: UTF-8  # 补全编码配置
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  
+  # RabbitMQ配置（已补全本地地址）
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        retry:
+          enabled: true        # 开启消费者重试
+          max-attempts: 3      # 最大重试次数
+          initial-interval: 6000  # 初始重试间隔（毫秒）
+          multiplier: 2        # 间隔时间乘子
+          max-interval: 10000  # 最大重试间隔（毫秒）
+    # 队列配置
+    queue:
+      email: email_queue
+      log-login: log_login_queue
+      log-system: log_system_queue
+    # 交换机配置
+    exchange:
+      email: email_exchange
+      log: log_exchange
+    # 路由键配置
+    routingKey:
+      email: email_routing_key
+      log-login: log_routing_key_login
+      log-system: log_routing_key_system
+  
+  # 文件上传限制
+  servlet:
+    multipart:
+      max-file-size: 10MB    # 单个文件大小限制
+      max-request-size: 10MB # 单次请求总文件大小限制
+  
+  # JSON日期格式化
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  
+  # Quartz定时任务配置（修正格式，补全数据源）
+  quartz:
+    job-store-type: jdbc  # 持久化到数据库
+    properties:
+      org:
+        quartz:
+          scheduler:
+            instanceId: AUTO  # 自动生成实例ID
+          jobStore:
+            class: org.quartz.impl.jdbcjobstore.JobStoreTX
+            driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate  # 补全驱动适配类
+            tablePrefix: QRTZ_  # Quartz表前缀（默认）
+            dataSource: quartz_jobs
+          dataSource:
+            quartz_jobs:
+              driver: com.mysql.cj.jdbc.Driver
+              URL: jdbc:mysql://127.0.0.1:13306/blog?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Hong_Kong
+              user: root
+              password: 123456
+              maxConnections: 10  # 补全最大连接数
+
+# MyBatis-Plus配置（整合原MyBatis配置，避免冲突）
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml  # 映射文件路径
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印SQL日志
+    map-underscore-to-camel-case: true  # 补全驼峰命名转换
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted       # 逻辑删除字段
+      logic-delete-value: 1               # 逻辑删除值
+      logic-not-delete-value: 0           # 逻辑未删除值
+      id-type: auto                       # 主键自增
+
+# 自定义邮件配置
+mail:
+  link:
+    apply:
+      redirect-uri: http://<你的后端域名或IP>:8088/link/email/apply  # 友链审核回调地址
+  # 邮件通知开关
+  article-email-notice: true    # 文章评论邮箱提醒
+  article-reply-notice: false   # 文章回复邮箱提醒
+  message-email-notice: false   # 留言评论邮箱提醒
+
+  message-new-notice: true      # 新留言邮箱提醒
+  message-reply-notice: true    # 留言回复邮箱提醒
+  apply-notice: true            # 友链申请邮箱提醒
+  pass-notice: true             # 友链审核通过通知对方
+
+# MinIO文件存储配置（已补全本地地址）
+minio:
+  endpoint: http://121.43.63.191:9000  # MinIO服务地址
+  accessKey: minioadmin            # 默认账号
+  secretKey: minioadmin            # 默认密码
+  bucketName: pblog                # 存储桶名称（需手动在MinIO控制台创建）
+
+# Swagger/Knife4j接口文档配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: xyz.kuailemao
+
+# Knife4j增强配置
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# OAuth第三方登录配置（需自行申请）
+oauth:
+  gitee:
+    client-id: <你的Gitee客户端ID>
+    client-secret: <你的Gitee客户端密钥>
+    redirect-uri: http://<你的后端域名>:8088/oauth/gitee/callback
+  github:
+    client-id: <你的GitHub客户端ID>
+    client-secret: <你的GitHub客户端密钥>
+    redirect-uri: http://<你的后端域名>:8088/oauth/github/callback
+
+# 网站基础配置
+web:
+  index:
+    path: http://127.0.0.1:8088/  # 前端首页地址
+
+# HTTP连接池配置
+http_pool:
+  max_total: 200
+  default_max_per_route: 100
+  connect_timeout: 5000
+  connection_request_timeout: 1000
+  socket_timeout: 65000
+  validate_after_inactivity: 2000
